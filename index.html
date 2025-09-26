@@ -1,4 +1,60 @@
 
+document.addEventListener('DOMContentLoaded', () => {
+  // basic safety checks
+  if (typeof DEFAULTS === 'undefined') {
+    console.error('DEFAULTS is undefined. Make sure you declared the defaults object BEFORE this script.');
+    // create empty fallback so buildRef doesn't crash
+    window.DEFAULTS = {};
+  }
+
+  const instrument = document.getElementById('instrument');
+  const pipValInput = document.getElementById('pipVal');
+  const autoSwitch = document.getElementById('autoSwitch');
+  const calcBtn = document.getElementById('calcBtn');
+  const calcOnly = document.getElementById('calcOnly');
+  const out = document.getElementById('resultText');
+  const human = document.getElementById('human');
+  const refTable = document.getElementById('refTable');
+  const pipLabel = document.getElementById('pipLabel');
+
+  // log missing elements so you can fix IDs
+  const refs = {instrument,pipValInput,autoSwitch,calcBtn,calcOnly,out,human,refTable,pipLabel};
+  for (const [k,v] of Object.entries(refs)) {
+    if (!v) console.warn(`Missing element: ${k} -> check HTML id="${k}" (case-sensitive).`);
+  }
+
+  function buildRef(){
+    if (!refTable) return;
+    let html = "";
+    const labels = {"EURUSD":"EUR / USD","GBPUSD":"GBP / USD","AUDUSD":"AUD / USD","NZDUSD":"NZD / USD","USDJPY":"USD / JPY","USDCAD":"USD / CAD","USDCHF":"USD / CHF","EURGBP":"EUR / GBP","EURJPY":"EUR / JPY","GBPJPY":"GBP / JPY","XAUUSD":"Gold XAU / USD","XAGUSD":"Silver XAG / USD","SPX500":"S&P 500","US30":"Dow 30","NAS100":"Nasdaq 100"};
+    REF_ORDER.forEach(k=>{
+      const label = labels[k] || k;
+      const val = (typeof DEFAULTS[k] !== 'undefined') ? DEFAULTS[k] : '—';
+      html += `<tr><td style="padding:6px 0">${label}</td><td style="text-align:right;padding:6px 0"><strong>${val}</strong></td></tr>`;
+    });
+    refTable.innerHTML = html;
+  }
+
+  buildRef();
+
+  // attach simple listeners so UI is responsive (adjust to your logic)
+  if (autoSwitch) {
+    autoSwitch.addEventListener('change', () => {
+      console.log('autoSwitch:', autoSwitch.checked);
+      if (pipValInput) pipValInput.disabled = !!autoSwitch.checked;
+    });
+  }
+
+  if (calcBtn) {
+    calcBtn.addEventListener('click', () => {
+      console.log('calc clicked');
+      // quick test output so you know script runs
+      if (out) out.textContent = 'calc clicked — check console for details';
+      // add your real calculate() call here if you have one
+      if (typeof calculate === 'function') calculate();
+    });
+  }
+});
 <!doctype html>
 <html lang="en">
 <head>
