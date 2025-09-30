@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Velor — Position Size Calculator</title>
+<style>
+:root{
+  --navy:#07203a;
+  --gold:#cba43b;
+  --muted:#6d6d6d;
+  --card:#ffffff;
+  --bg:#f6fbff;
+  --radius:12px;
+  --shadow: 0 8px 26px rgba(8,20,40,0.08);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;padding:18px;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+  background:linear-gradient(180deg,var(--bg) 0%, #ffffff 100%);
+  color:#081826;
+}
+.wrap{max-width:920px;margin:0 auto}
+.card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:14px}
+.top{display:flex;gap:14px;align-items:center}
+.logo{width:64px;height:64px;border-radius:12px;background:linear-gradient(180deg,var(--navy),#08304e);display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 64px}
+.logo img{width:100%;height:100%;object-fit:contain}
+.brand-title{font-weight:700;font-size:18px;color:var(--navy)}
+.brand-sub{font-size:13px;color:var(--muted);margin-top:3px}
+.h1{font-size:18px;margin:4px 0 8px;color:var(--navy)}
+.lead{margin:0;color:var(--muted);font-size:13px}
+label{display:block;font-size:13px;color:var(--muted);margin-top:10px}
+input[type="number"], select, input[type="text"]{
+  width:100%;padding:12px;border-radius:10px;border:1px solid #eef3f6;margin-top:8px;font-size:15px;background:white
+}
+.row{display:flex;gap:10px}
+.col{flex:1}
+.btn{display:inline-block;padding:12px 14px;border-radius:10px;background:var(--navy);color:white;border:none;font-weight:700;width:100%;font-size:15px;margin-top:12px}
+.out{margin-top:12px;padding:12px;border-radius:8px;background:#fbfbfc;border:1px solid #eef3f6;font-weight:600}
+.small{font-size:12px;color:#8b95a3}
+.muted{color:var(--muted)}
+.warning{color:#b00;font-weight:700;margin-top:8px}
+@media(min-width:860px){.grid-1{display:block}}
+@media(max-width:859px){.row{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card top">
+    <div class="logo">
+      <img src="logo.png" alt="Velor logo" />
+    </div>
+    <div style="flex:1">
+      <div class="brand-title">Velor — Risk Calculator</div>
+      <div class="brand-sub">Fast. Trustworthy. Mobile-ready.</div>
+    </div>
+    <div style="text-align:right">
+      <div class="small muted">Built for traders</div>
+    </div>
+  </div>
+
+  <div class="card grid-1">
+    <div class="h1">Position size</div>
+    <p class="lead">Select instrument. Enter account, risk %, and stop. Lot base fixed to Mini (10,000).</p>
+
+    <label>Instrument</label>
+    <select id="instrument" class="opt">
+      <optgroup label="Forex — Majors">
+        <option value="EURUSD">EUR / USD</option>
+        <option value="GBPUSD">GBP / USD</option>
+        <option value="AUDUSD">AUD / USD</option>
+        <option value="NZDUSD">NZD / USD</option>
+        <option value="USDJPY">USD / JPY</option>
+        <option value="USDCAD">USD / CAD</option>
+        <option value="USDCHF">USD / CHF</option>
+      </optgroup>
+      <optgroup label="Forex — Crosses">
+        <option value="EURGBP">EUR / GBP</option>
+        <option value="EURJPY">EUR / JPY</option>
+        <option value="GBPJPY">GBP / JPY</option>
+      </optgroup>
+      <optgroup label="Metals">
+        <option value="XAUUSD">Gold (XAU / USD)</option>
+        <option value="XAGUSD">Silver (XAG / USD)</option>
+      </optgroup>
+      <optgroup label="Indices (CFD)">
+        <option value="SPX500">S&P 500 (SPX500)</option>
+        <option value="US30">Dow 30 (US30)</option>
+        <option value="NAS100">Nasdaq 100 (NAS100)</option>
+      </optgroup>
+    </select>
+
+    <label>Account balance (in your account currency)</label>
+    <input id="acct" type="number" placeholder="10000" />
+
+    <div class="row" style="margin-top:6px">
+      <div class="col">
+        <label>Risk %</label>
+        <input id="risk" type="number" placeholder="1.0" step="0.01" />
+      </div>
+      <div class="col">
+        <label>Stop (pips / points)</label>
+        <input id="pips" type="number" placeholder="50" step="0.1" />
+      </div>
+    </div>
+
+    <button id="calcBtn" class="btn">Calculate</button>
+
+    <div id="out" class="out"><div id="resultText">Enter values and press Calculate.</div></div>
+
+    <div id="warn" class="warning" style="display:none">Warning: You're risking more than 5% of your account.</div>
+
+  </div>
+</div>
+
+<script>
+/* Backend fixed lot base: Mini = 10,000 (no UI noise) */
+const LOT_BASE = 10000;
+const SCALE = LOT_BASE / 100000; // 0.1
+
+const DEFAULTS = {
+  "EURUSD": 10.0, "GBPUSD": 10.0, "AUDUSD": 10.0, "NZDUSD": 10.0,
+  "USDJPY": 9.09, "USDCAD": 10.0, "USDCHF": 10.0,
+  "EURGBP": 10.0, "EURJPY": 9.09, "GBPJPY": 9.09,
+  "XAUUSD": 1.0, "XAGUSD": 0.05, "SPX500": 0.5, "US30": 1.0, "NAS100": 0.2
+};
+
+/* Remove quick reference block if present (currency names & pip values) */
+const maybeRef = document.querySelectorAll('.grid-2 > .card')[1];
+if(maybeRef) maybeRef.remove();
+
+/* Helpers */
+function formatNumber(x){
+  return typeof x === 'number' ? x.toLocaleString(undefined,{maximumFractionDigits:4}) : x;
+}
+function setError(el, msg){
+  let span = el.nextElementSibling;
+  if(!span || !span.classList || !span.classList.contains('err')){
+    span = document.createElement('div');
+    span.className = 'err';
+    span.style.color = '#b00';
+    span.style.fontSize = '12px';
+    span.style.marginTop = '6px';
+    el.parentNode.insertBefore(span, el.nextSibling);
+  }
+  span.textContent = msg || '';
+}
+function clearError(el){
+  const span = el.nextElementSibling;
+  if(span && span.classList && span.classList.contains('err')) span.remove();
+}
+
+/* Validation */
+function validateInputs(){
+  const acctEl = document.getElementById('acct');
+  const riskEl = document.getElementById('risk');
+  const pipsEl = document.getElementById('pips');
+  let ok = true;
+  [acctEl, riskEl, pipsEl].forEach(e=>clearError(e));
+  if(!acctEl.value || Number(acctEl.value) <= 0){ setError(acctEl,'Enter account > 0'); ok=false; }
+  if(!riskEl.value || Number(riskEl.value) <= 0 || Number(riskEl.value) > 100){ setError(riskEl,'Enter risk% between 0.01 and 100'); ok=false; }
+  if(!pipsEl.value || Number(pipsEl.value) <= 0){ setError(pipsEl,'Enter stop > 0'); ok=false; }
+  return ok;
+}
+
+/* Calculation (identical method used in working file) */
+function positionSize(account, riskPercent, stopPips, pipValue){
+  const riskAmount = Number((account * (riskPercent/100)).toFixed(2));
+  const costPerLot = Number((stopPips * pipValue).toFixed(8)); // pipValue already scaled to MINI
+  const lots = costPerLot === 0 ? 0 : Number((riskAmount / costPerLot).toFixed(4));
+  return { riskAmount, costPerLot, recommendedLots: lots };
+}
+
+function calculate(){
+  document.getElementById('warn').style.display = 'none';
+  if(!validateInputs()) return;
+
+  const acct = Number(document.getElementById('acct').value);
+  const risk = Number(document.getElementById('risk').value);
+  const pips = Number(document.getElementById('pips').value);
+  const instr = document.getElementById('instrument').value;
+
+  // pip value uses DEFAULTS (per 100k) scaled to MINI (10k)
+  const pipVal = Number(((DEFAULTS[instr] || 0) * SCALE).toFixed(8));
+
+  const res = positionSize(acct, risk, pips, pipVal);
+
+  document.getElementById('resultText').innerHTML = `Risk: <strong>${formatNumber(res.riskAmount)}</strong><br>Cost/lot: <strong>${formatNumber(res.costPerLot)}</strong><br>Lots: <strong>${res.recommendedLots}</strong>`;
+
+  if(risk > 5) document.getElementById('warn').style.display = 'block';
+}
+
+/* Hook */
+document.getElementById('calcBtn').addEventListener('click', calculate);
+['acct','risk','pips'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('input', ()=> clearError(el));
+});
+</script>
+</body>
+</html>
